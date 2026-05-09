@@ -234,9 +234,10 @@ export default function Alerts() {
                               const trigPrice = firedAlert.triggeredPrice || firedAlert.targetPrice;
                               const diff = coin.price - trigPrice;
                               const pct = trigPrice > 0 ? (diff / trigPrice) * 100 : 0;
+                              const sign = diff >= 0 ? '+' : '';
                               return (
                                 <div className={`text-xs font-mono ${diff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                  {diff >= 0 ? '+' : ''}{formatPrice(diff)} ({pct.toFixed(2)}%)
+                                  {sign}{formatPrice(diff)} ({sign}{pct.toFixed(3)}%)
                                 </div>
                               );
                             })()}

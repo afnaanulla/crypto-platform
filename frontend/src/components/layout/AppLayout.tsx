@@ -23,6 +23,8 @@ export const AppLayout: React.FC = () => {
   const markTriggered = useAlertsStore((state) => state.markTriggered);
   const fetchPortfolio = usePortfolioStore((state) => state.fetchPortfolio);
   const soundEnabled = useUiStore((state) => state.soundEnabled);
+  const soundEnabledRef = React.useRef(soundEnabled);
+  React.useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
   React.useEffect(() => {
     initialize();
@@ -43,7 +45,7 @@ export const AppLayout: React.FC = () => {
       const coin = usePriceStore.getState().coins.find((coin) => coin.id === data.coinId);
       markTriggered(data.alertId, data.currentPrice);
 
-      if (soundEnabled) playAlertSound(data.condition);
+      if (soundEnabledRef.current) playAlertSound(data.condition);
 
       toast.custom(
         (toastProps) => (
@@ -78,7 +80,7 @@ export const AppLayout: React.FC = () => {
     return () => {
       socket.off("alert:triggered", onAlertTriggered);
     };
-  }, [markTriggered, soundEnabled, coins]);
+  }, [markTriggered]); // intentionally minimal — avoids re-registering listener on every price tick
 
   return (
     <div className="flex min-h-screen bg-ink-900 text-white">
@@ -100,7 +102,6 @@ export const AppLayout: React.FC = () => {
         </main>
       </div>
       <MobileNav />
-      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
     </div>
   );
 };

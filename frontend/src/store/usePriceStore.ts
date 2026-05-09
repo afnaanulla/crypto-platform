@@ -65,8 +65,13 @@ export const usePriceStore = create<PriceState>((set, get) => ({
   _sparklineInterval: null,
 
   initialize: async () => {
-    // Prevent re-registering listeners if already initialized and connected
-    if (get().loaded && socket.connected) return;
+    // Prevent re-registering if socket is already live
+    if (socket.connected && get().loaded) return;
+
+    // Always clear stale listeners before re-registering (React Strict Mode runs effects twice)
+    socket.off("connect");
+    socket.off("disconnect");
+    socket.off("prices:update");
 
     // 1. Initial Fetch
     try {
@@ -85,7 +90,6 @@ export const usePriceStore = create<PriceState>((set, get) => ({
       console.error("Failed to fetch initial prices", error);
       set({ loaded: true }); // still mark loaded so UI shows empty state, not infinite spinner
     }
-
 
     // 2. Connect WebSocket
     socket.connect();

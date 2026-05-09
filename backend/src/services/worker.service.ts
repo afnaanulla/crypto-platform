@@ -1,7 +1,6 @@
 import cron from "node-cron";
 import { fetchAndCachePrices } from "./coingecko.service";
 import { checkAndTriggerAlerts } from "./alert.service";
-import { getSocketIO } from "../websocket/socket";
 import redis from "../config/redis";
 import logger from "../utils/logger";
 
@@ -17,27 +16,18 @@ export const runPriceCycle = async (): Promise<void> => {
 
   try {
     const prices = await fetchAndCachePrices();
-    const io = getSocketIO();
     logger.info(`Worker cycle: Fetched ${prices.length} prices. Broadcasting...`);
 
-    // Publish to Redis for multi-process setups.
-    // The socket.ts subClient listener will re-emit to WebSocket clients.
+    // Publish prices to Redis — backend's subClient forwards to WebSocket clients
     const published = await redis.publish("prices:update", JSON.stringify({
       prices,
       timestamp: new Date().toISOString(),
     })).catch(() => 0);
 
-    // Only emit directly if Redis pub/sub has no subscribers
-    // (i.e. subClient is not running — avoids double-broadcast in dev)
-    if (published === 0) {
-      io.emit("prices:update", {
-        prices,
-        timestamp: new Date().toISOString(),
-      });
-    }
 
-    // Check and fire any triggered alerts
-    await checkAndTriggerAlerts(prices, io);
+
+    // Check and fire any triggered alerts (publishes via Redis)
+    await checkAndTriggerAlerts(prices);
 
 
     logger.info(`Price cycle complete — broadcasted ${prices.length} coins`);
