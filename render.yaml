@@ -1,0 +1,74 @@
+services:
+  # 1. Database (Managed PostgreSQL)
+  - type: database
+    name: crypto-db
+    user: crypto_user
+    databaseName: crypto_db
+    plan: free
+
+  # 2. Redis (Managed Redis)
+  - type: redis
+    name: crypto-redis
+    plan: free
+    ipAllowList: [] # Only allow internal connections
+
+  # 3. Backend API
+  - type: web
+    name: crypto-api
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install && npm run build && npx prisma generate
+    startCommand: cd backend && npx prisma migrate deploy && node --max-old-space-size=400 dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crypto-db
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: crypto-redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://crypto-market-intel.onrender.com # Change to your frontend URL
+
+  # 4. Background Worker
+  - type: worker
+    name: crypto-worker
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install && npm run build && npx prisma generate
+    startCommand: cd backend && node --max-old-space-size=400 dist/worker.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: crypto-db
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: crypto-redis
+          property: connectionString
+
+  # 5. Frontend
+  - type: web
+    name: crypto-frontend
+    env: static
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishDir: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: crypto-api
+          type: web
+          property: url
+      - key: VITE_SOCKET_URL
+        fromService:
+          name: crypto-api
+          type: web
+          property: url
