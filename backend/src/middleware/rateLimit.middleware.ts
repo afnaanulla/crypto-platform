@@ -1,9 +1,12 @@
 import rateLimit from "express-rate-limit";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 // Strict limiter for auth endpoints — prevents brute-force attacks
+// In development, limit is relaxed so testing doesn't hit 429s
 export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,                   // max 20 requests per window per IP
+  windowMs: 15 * 60 * 1000,          // 15 minutes
+  max: isDev ? 1000 : 20,            // dev: unlimited-ish | prod: 20 req/window
   standardHeaders: true,
   legacyHeaders: false,
   message: {

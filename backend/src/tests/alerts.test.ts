@@ -1,9 +1,8 @@
 import { checkAndTriggerAlerts } from "../services/alert.service";
 import { CoinPriceRecord } from "../types";
 import prisma from "../config/prisma";
-import { Server as SocketIOServer } from "socket.io";
 
-// Mock dependencies
+// Mock Prisma
 jest.mock("../config/prisma", () => ({
   __esModule: true,
   default: {
@@ -14,12 +13,19 @@ jest.mock("../config/prisma", () => ({
   },
 }));
 
-const mockPrisma = prisma as jest.Mocked<typeof prisma>;
+// Mock Redis — checkAndTriggerAlerts now publishes via Redis instead of io.emit
+jest.mock("../config/redis", () => ({
+  __esModule: true,
+  default: {
+    publish: jest.fn().mockResolvedValue(1),
+    status: "ready",
+  },
+}));
 
-const mockIo = {
-  to: jest.fn().mockReturnThis(),
-  emit: jest.fn(),
-} as unknown as SocketIOServer;
+import redis from "../config/redis";
+
+const mockPrisma = prisma as jest.Mocked<typeof prisma>;
+const mockRedis = redis as jest.Mocked<typeof redis>;
 
 const makePrices = (overrides: Partial<CoinPriceRecord> = {}): CoinPriceRecord[] => [
   {
@@ -51,12 +57,11 @@ describe("Alert service — checkAndTriggerAlerts", () => {
     ]);
     (mockPrisma.alert.update as jest.Mock).mockResolvedValue({ count: 1 });
 
-    await checkAndTriggerAlerts(makePrices({ price: 46000 }), mockIo);
+    await checkAndTriggerAlerts(makePrices({ price: 46000 }));
 
-    expect(mockIo.to).toHaveBeenCalledWith("user:user-1");
-    expect(mockIo.emit).toHaveBeenCalledWith(
+    expect(mockRedis.publish).toHaveBeenCalledWith(
       "alert:triggered",
-      expect.objectContaining({ alertId: "alert-1", currentPrice: 46000 })
+      expect.stringContaining("alert-1")
     );
     expect(mockPrisma.alert.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "alert-1" } })
@@ -77,11 +82,11 @@ describe("Alert service — checkAndTriggerAlerts", () => {
     ]);
     (mockPrisma.alert.update as jest.Mock).mockResolvedValue({ count: 1 });
 
-    await checkAndTriggerAlerts(makePrices({ price: 46000 }), mockIo);
+    await checkAndTriggerAlerts(makePrices({ price: 46000 }));
 
-    expect(mockIo.emit).toHaveBeenCalledWith(
+    expect(mockRedis.publish).toHaveBeenCalledWith(
       "alert:triggered",
-      expect.objectContaining({ alertId: "alert-2" })
+      expect.stringContaining("alert-2")
     );
   });
 
@@ -98,18 +103,18 @@ describe("Alert service — checkAndTriggerAlerts", () => {
       },
     ]);
 
-    await checkAndTriggerAlerts(makePrices({ price: 46000 }), mockIo);
+    await checkAndTriggerAlerts(makePrices({ price: 46000 }));
 
-    expect(mockIo.emit).not.toHaveBeenCalled();
+    expect(mockRedis.publish).not.toHaveBeenCalled();
     expect(mockPrisma.alert.update).not.toHaveBeenCalled();
   });
 
   test("skips when no active alerts", async () => {
     (mockPrisma.alert.findMany as jest.Mock).mockResolvedValue([]);
 
-    await checkAndTriggerAlerts(makePrices(), mockIo);
+    await checkAndTriggerAlerts(makePrices());
 
-    expect(mockIo.emit).not.toHaveBeenCalled();
+    expect(mockRedis.publish).not.toHaveBeenCalled();
   });
 
   test("skips coins not in price data", async () => {
@@ -126,8 +131,8 @@ describe("Alert service — checkAndTriggerAlerts", () => {
     ]);
 
     // Only bitcoin in prices — ethereum missing
-    await checkAndTriggerAlerts(makePrices(), mockIo);
+    await checkAndTriggerAlerts(makePrices());
 
-    expect(mockIo.emit).not.toHaveBeenCalled();
+    expect(mockRedis.publish).not.toHaveBeenCalled();
   });
 });
