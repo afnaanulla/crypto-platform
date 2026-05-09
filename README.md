@@ -29,10 +29,7 @@ A production-grade real-time SaaS platform that pulls live cryptocurrency prices
 
 ## Architecture
 
-```
 <img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/54f5af54-d884-4bbd-a03f-681760193465" />
-
-```
 
 ### Request Flow
 ```
