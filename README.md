@@ -164,7 +164,7 @@ Connect with auth: `io(URL, { auth: { token: 'Bearer ...' } })`
 
 ## Video Walkthrough
 
-https://youtu.be/_eCXtEbgn2c
+[https://youtu.be/_eCXtEbgn2c](https://drive.google.com/file/d/1moUPaBKWPs9D_uhNEmuGE6sk6bLJmBUN/view?usp=sharing)
 ---
 
 ## Running Tests
