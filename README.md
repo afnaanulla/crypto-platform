@@ -30,29 +30,8 @@ A production-grade real-time SaaS platform that pulls live cryptocurrency prices
 ## Architecture
 
 ```
-┌─────────────────────┐
-│    CoinGecko API    │  (External — rate limited 30 calls/min)
-└──────────┬──────────┘
-           │ Every 10s
-┌──────────▼──────────┐
-│  Background Worker  │  node-cron — fetches prices, checks alerts
-│   worker.service.ts │  429-aware: honours Retry-After header
-└──────────┬──────────┘
-           │ Persist + Cache
-┌──────────▼──────────┐
-│  PostgreSQL + Redis  │  Neon (DB) + Upstash (cache, TTL 25s)
-│  Prisma ORM          │  Indexed: coinId, createdAt, userId
-└──────────┬──────────┘
-           │
-┌──────────▼──────────┐
-│  Express REST API   │  JWT auth, Zod validation, rate limiting
-│  + Socket.io Server │  Broadcasts prices:update every 10s
-└──────────┬──────────┘  Emits alert:triggered to user rooms
-           │ HTTP + WebSocket
-┌──────────▼──────────┐
-│   React Frontend    │  Zustand store, auto-reconnect Socket.io
-│   Vite + Tailwind   │  5 pages, Recharts, Framer Motion
-└─────────────────────┘
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/54f5af54-d884-4bbd-a03f-681760193465" />
+
 ```
 
 ### Request Flow
